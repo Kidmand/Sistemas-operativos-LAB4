@@ -25,31 +25,31 @@
 static inline fat_volume get_fat_volume() {
     return fuse_get_context()->private_data;
 }
-
+/*
 #define LOG_MESSAGE_SIZE 100
 #define DATE_MESSAGE_SIZE 30
 
-// void now_to_str(char *buf) {
-//     time_t now = time(NULL);
-//     struct tm *timeinfo;
-//     timeinfo = localtime(&now);
+void now_to_str(char *buf) {
+    time_t now = time(NULL);
+    struct tm *timeinfo;
+    timeinfo = localtime(&now);
 
-//     strftime(buf, DATE_MESSAGE_SIZE, "%d-%m-%Y %H:%M", timeinfo);
-// }
+    strftime(buf, DATE_MESSAGE_SIZE, "%d-%m-%Y %H:%M", timeinfo);
+}
 
 // // TODO: complete this function to log to file
-// void fat_fuse_log_activity(char *operation_type, fat_file target_file)
-// {
-//     char buf[LOG_MESSAGE_SIZE] = "";
-//     now_to_str(buf);
-//     strcat(buf, "\t");
-//     strcat(buf, getlogin());
-//     strcat(buf, "\t");
-//     strcat(buf, target_file->filepath);
-//     strcat(buf, "\t");
-//     strcat(buf, operation_type);
-//     strcat(buf, "\n");
-// }
+void fat_fuse_log_activity(char *operation_type, fat_file target_file) {
+    char buf[LOG_MESSAGE_SIZE] = "";
+    now_to_str(buf);
+    strcat(buf, "\t");
+    strcat(buf, getlogin());
+    strcat(buf, "\t");
+    strcat(buf, target_file->filepath);
+    strcat(buf, "\t");
+    strcat(buf, operation_type);
+    strcat(buf, "\n");
+}
+*/
 
 /* Get file attributes (file descriptor version) */
 int fat_fuse_fgetattr(const char *path, struct stat *stbuf,
@@ -157,13 +157,22 @@ int fat_fuse_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
 
     children = fat_tree_flatten_h_children(dir_node);
     child = children;
+    bool exists_fs_log = false, isnt_fs_log = false;
     while (*child != NULL) {
-        error = (*filler)(buf, (*child)->name, NULL, 0);
-        if (error != 0) {
-            return -errno;
+        isnt_fs_log = strcmp((*child)->name, "fs.log") != 0;
+        exists_fs_log = exists_fs_log || !isnt_fs_log;
+        if (isnt_fs_log) {
+            error = (*filler)(buf, (*child)->name, NULL, 0);
+            if (error != 0) {
+                return -errno;
+            }
         }
         child++;
     }
+
+    if (!exists_fs_log)
+        fat_fuse_mknod("/fs.log", 0, 0);
+
     return 0;
 }
 
