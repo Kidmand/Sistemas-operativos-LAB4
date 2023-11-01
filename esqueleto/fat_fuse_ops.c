@@ -39,12 +39,12 @@ void now_to_str(char *buf) {
     strftime(buf, DATE_MESSAGE_SIZE, "%d-%m-%Y %H:%M", timeinfo);
 }
 
-// // TODO: complete this function to log to file
+// Funcion para guardar las activdades de read/write en fs.log
 void fat_fuse_log_activity(char *operation_type, fat_file target_file) {
     char buf[LOG_MESSAGE_SIZE] = "";
     now_to_str(buf);
     strcat(buf, "\t");
-    strcat(buf, getlogin()); // SI NO ANDA, COMENTAR ESTA LINEA.
+    strcat(buf, getlogin()); 
     strcat(buf, "\t");
     strcat(buf, target_file->filepath);
     strcat(buf, "\t");
