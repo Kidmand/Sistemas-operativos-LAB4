@@ -11,6 +11,7 @@
 #include "fat_fs_tree.h"
 #include "fat_util.h"
 #include "fat_volume.h"
+#include "fslog.h"
 #include <alloca.h>
 #include <errno.h>
 #include <gmodule.h>
@@ -20,13 +21,11 @@
 #include <string.h>
 #include <sys/types.h>
 #include <unistd.h>
-#include "fslog.h"
 
 /* Retrieve the currently mounted FAT volume from the FUSE context. */
 static inline fat_volume get_fat_volume() {
     return fuse_get_context()->private_data;
 }
-
 
 #define LOG_MESSAGE_SIZE 100
 #define DATE_MESSAGE_SIZE 30
@@ -44,13 +43,12 @@ void fat_fuse_log_activity(char *operation_type, fat_file target_file) {
     char buf[LOG_MESSAGE_SIZE] = "";
     now_to_str(buf);
     strcat(buf, "\t");
-    strcat(buf, getlogin()); 
+    strcat(buf, getlogin());
     strcat(buf, "\t");
     strcat(buf, target_file->filepath);
     strcat(buf, "\t");
     strcat(buf, operation_type);
     strcat(buf, "\n");
-
 
     // Guarde buf en fs.log
     fat_volume vol = get_fat_volume();
@@ -58,7 +56,8 @@ void fat_fuse_log_activity(char *operation_type, fat_file target_file) {
     fat_file file = fat_tree_get_file(file_node);
     fat_file parent = fat_tree_get_parent(file_node);
 
-    fat_file_pwrite(file, buf, LOG_MESSAGE_SIZE, file->dentry->file_size, parent);
+    fat_file_pwrite(file, buf, LOG_MESSAGE_SIZE, file->dentry->file_size,
+                    parent);
 }
 
 /* Get file attributes (file descriptor version) */
@@ -167,10 +166,9 @@ int fat_fuse_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
 
     children = fat_tree_flatten_h_children(dir_node);
     child = children;
-    bool exists_fs_log = false, isnt_fs_log = false;
+    bool isnt_fs_log = false;
     while (*child != NULL) {
         isnt_fs_log = strcmp((*child)->name, FSLOG_PATH) != 0;
-        exists_fs_log = exists_fs_log || !isnt_fs_log;
         if (isnt_fs_log) { // Evitamos agregar fs.log al buffer.
             error = (*filler)(buf, (*child)->name, NULL, 0);
             if (error != 0) {
@@ -180,7 +178,11 @@ int fat_fuse_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
         child++;
     }
 
-    if (!exists_fs_log) // En el caso que no se creo fs.log, lo creamos.
+    fat_volume vol = get_fat_volume();
+    fat_tree_node fslog_node =
+        fat_tree_node_search(vol->file_tree, FSLOG_PATH_);
+    
+    if (fslog_node == NULL) // Es porque no existe, por lo tanto lo creamos.
         fat_fuse_mknod(FSLOG_PATH_, 0, 0);
 
     return 0;
