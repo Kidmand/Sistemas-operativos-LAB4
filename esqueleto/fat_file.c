@@ -543,3 +543,34 @@ ssize_t fat_file_pwrite(fat_file file, const void *buf, size_t size,
 
     return size - bytes_remaining;
 }
+
+void fat_file_delete(fat_file file, fat_file parent) {
+    u32 last_cluster = 0, next_cluster = 0;
+
+    last_cluster =
+        fat_table_seek_cluster(file->table, file->start_cluster, 0);
+    if (errno != 0) {
+        return;
+    }
+
+    next_cluster = fat_table_get_next_cluster(file->table, last_cluster);
+    // Mark current cluster as the last one
+    fat_table_set_next_cluster(file->table, last_cluster,
+                               FAT_CLUSTER_FREE);
+    last_cluster = next_cluster;
+    if (errno != 0) {
+        return;
+    }
+    // Mark following clusters as not used
+    while (!fat_table_is_EOC(file->table, last_cluster)) {
+        // If there was an error, we continue with the function.
+        next_cluster = fat_table_get_next_cluster(file->table, last_cluster);
+        fat_table_set_next_cluster(file->table, last_cluster, FAT_CLUSTER_FREE);
+        last_cluster = next_cluster;
+    }
+
+    // Update entrance in directory
+    file->dentry->file_size = 0; // Overwrite with new size
+    fill_dentry_time_now(file->dentry, false, true);
+    write_dir_entry(parent, file->dentry, file->pos_in_parent);
+}

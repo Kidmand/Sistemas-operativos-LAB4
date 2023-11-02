@@ -181,7 +181,7 @@ int fat_fuse_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
     fat_volume vol = get_fat_volume();
     fat_tree_node fslog_node =
         fat_tree_node_search(vol->file_tree, FSLOG_PATH_);
-    
+
     if (fslog_node == NULL) // Es porque no existe, por lo tanto lo creamos.
         fat_fuse_mknod(FSLOG_PATH_, 0, 0);
 
@@ -329,10 +329,59 @@ int fat_fuse_truncate(const char *path, off_t offset) {
     }
     file = fat_tree_get_file(file_node);
     if (fat_file_is_directory(file))
-        return -EISDIR;
+        return -ENOTDIR;
 
     parent = fat_tree_get_parent(file_node);
     fat_tree_inc_num_times_opened(file_node);
     fat_file_truncate(file, offset, parent);
+    return -errno;
+}
+
+int fat_fuse_rmdir(const char *path) { 
+    errno = 0;
+    fat_volume vol = get_fat_volume();
+    fat_file file = NULL, parent = NULL;
+    fat_tree_node file_node = fat_tree_node_search(vol->file_tree, path);
+    if (file_node == NULL || errno != 0) {
+        errno = ENOENT;
+        return -errno;
+    }
+
+    file = fat_tree_get_file(file_node);
+    if (!fat_file_is_directory(file))
+        return -EISDIR;
+
+    if (file->dentry->file_size != 0)
+        return -EEXIST; // HAY QUE MEJORAR ESTE CODIGO DE ERROR.
+    
+    parent = fat_tree_get_parent(file_node);
+
+    fat_file_delete(file, parent);
+
+    fat_tree_delete(vol->file_tree, path);
+    
+    return -errno;
+ }
+
+int fat_fuse_unlink(const char *path) {
+    errno = 0;
+    fat_volume vol = get_fat_volume();
+    fat_file file = NULL, parent = NULL;
+    fat_tree_node file_node = fat_tree_node_search(vol->file_tree, path);
+    if (file_node == NULL || errno != 0) {
+        errno = ENOENT;
+        return -errno;
+    }
+
+    file = fat_tree_get_file(file_node);
+    if (fat_file_is_directory(file))
+        return -EISDIR;
+
+    parent = fat_tree_get_parent(file_node);
+
+    fat_file_delete(file, parent);
+
+    fat_tree_delete(vol->file_tree, path);
+    
     return -errno;
 }
