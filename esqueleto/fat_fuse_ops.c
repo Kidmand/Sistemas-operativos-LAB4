@@ -340,26 +340,31 @@ int fat_fuse_truncate(const char *path, off_t offset) {
 int fat_fuse_rmdir(const char *path) { 
     errno = 0;
     fat_volume vol = get_fat_volume();
-    fat_file file = NULL, parent = NULL;
+    fat_file dir = NULL, parent = NULL;
     fat_tree_node file_node = fat_tree_node_search(vol->file_tree, path);
     if (file_node == NULL || errno != 0) {
         errno = ENOENT;
         return -errno;
     }
 
-    file = fat_tree_get_file(file_node);
-    if (!fat_file_is_directory(file))
+    // Chequeamos que sea realmente un directorio.
+    dir = fat_tree_get_file(file_node);
+    if (!fat_file_is_directory(dir))
         return -EISDIR;
 
-    if (file->dentry->file_size != 0)
-        return -EEXIST; // HAY QUE MEJORAR ESTE CODIGO DE ERROR.
-    
+    // Chequeamos que el directorio no tenga elementos.
+    GList *children = fat_file_read_children(dir);
+    bool dir_is_empty = g_list_length(children) == 0;
+    g_list_free(children);
+    if (!dir_is_empty) 
+        return -ENOTEMPTY;
+
     parent = fat_tree_get_parent(file_node);
 
-    fat_file_delete(file, parent);
+    fat_file_delete(dir, parent);
 
     fat_tree_delete(vol->file_tree, path);
-    
+
     return -errno;
  }
 
@@ -373,6 +378,7 @@ int fat_fuse_unlink(const char *path) {
         return -errno;
     }
 
+    // Chequeamos que sea realmente un archivo.
     file = fat_tree_get_file(file_node);
     if (fat_file_is_directory(file))
         return -EISDIR;
