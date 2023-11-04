@@ -472,8 +472,11 @@ void fat_file_truncate(fat_file file, off_t offset, fat_file parent) {
 
     next_cluster = fat_table_get_next_cluster(file->table, last_cluster);
     // Mark current cluster as the last one
+
+    printf("El FILETRUNCATE es EOF: %d\n", fat_table_is_EOC(file->table, last_cluster));
     fat_table_set_next_cluster(file->table, last_cluster,
                                FAT_CLUSTER_END_OF_CHAIN);
+    printf("El FILETRUNCATE es EOF: %d\n", fat_table_is_EOC(file->table, last_cluster));
     last_cluster = next_cluster;
     if (errno != 0) {
         return;
@@ -521,20 +524,19 @@ ssize_t fat_file_pwrite(fat_file file, const void *buf, size_t size, off_t offse
         offset += bytes_written_cluster;
 
         if (bytes_remaining > 0) {
-            cluster = fat_table_get_next_cluster(file->table, cluster);
+            new_cluster = fat_table_get_next_cluster(file->table, cluster);
             if (errno != 0) {
                 break;
             }
-            if (fat_table_is_EOC(file->table,cluster))
+
+            if (fat_table_is_EOC(file->table,new_cluster))
             {
                 new_cluster = fat_table_get_next_free_cluster(file->table);
-                fat_table_set_next_cluster(file->table, new_cluster, FAT_CLUSTER_END_OF_CHAIN);
                 fat_table_set_next_cluster(file->table, cluster, new_cluster);
-                printf("El cluster es EOF: %d\n", fat_table_is_EOC(file->table, cluster));
-                printf("El siguiente cluter es: %d\n", fat_table_get_next_cluster(file->table, cluster));
-                printf("El new_cluster es EOF: %d\n", fat_table_is_EOC(file->table, new_cluster));
-                printf("El new_cluster es: %d\n", new_cluster );
-                printf("El numero de cluster es: %d\n", fat_table_get_clusters_for_size(file->table, bytes_remaining));
+                fat_table_set_next_cluster(file->table, new_cluster, FAT_CLUSTER_END_OF_CHAIN);
+            } else 
+            {
+                cluster = new_cluster;
             }
         }
     }
