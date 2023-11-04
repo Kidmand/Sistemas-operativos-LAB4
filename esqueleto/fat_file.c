@@ -534,10 +534,8 @@ ssize_t fat_file_pwrite(fat_file file, const void *buf, size_t size, off_t offse
                 new_cluster = fat_table_get_next_free_cluster(file->table);
                 fat_table_set_next_cluster(file->table, cluster, new_cluster);
                 fat_table_set_next_cluster(file->table, new_cluster, FAT_CLUSTER_END_OF_CHAIN);
-            } else 
-            {
-                cluster = new_cluster;
-            }
+            } 
+            cluster = new_cluster;
         }
     }
 
