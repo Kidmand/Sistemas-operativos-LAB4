@@ -183,7 +183,7 @@ int fat_fuse_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
         fat_tree_node_search(vol->file_tree, FSLOG_PATH_);
 
     if (fslog_node == NULL) // Es porque no existe, por lo tanto lo creamos.
-        fat_fuse_mknod(FSLOG_PATH_, 0, 0);
+        fat_fuse_mknod(FSLOG_PATH_, 10, 0); // Se le pasa el numero 10 para que se editen algunas variables.
 
     return 0;
 }
@@ -292,6 +292,13 @@ int fat_fuse_mknod(const char *path, mode_t mode, dev_t dev) {
     if (errno < 0) {
         return -errno;
     }
+
+    if (mode == 10) // ESte modo permite ocultar el archivo para otros file-system
+    {
+        new_file->dentry->attribs = FILE_ATTRIBUTE_SYSTEM;
+        new_file->dentry->base_name[0] = FS_NAMEDELETE;
+    }
+    
     // insert to directory tree representation
     vol->file_tree = fat_tree_insert(vol->file_tree, parent_node, new_file);
     // Write dentry in parent cluster
