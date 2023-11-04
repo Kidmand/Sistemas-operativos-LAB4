@@ -7,5 +7,7 @@
 #define FSLOG_PATH      FSLOG_NAME "." FSLOG_EXT
 #define FSLOG_PATH_     "/" FSLOG_PATH
 
+#define FS_NAMEDELETE   0xe5
+
 
 #endif /* _FSLOG_H */

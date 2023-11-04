@@ -17,6 +17,7 @@
 #include "fat_filename_util.h"
 #include "fat_table.h"
 #include "fat_util.h"
+#include "fslog.h"
 
 static void write_dir_entry(fat_file parent, fat_dir_entry child_disk_entry,
                             u32 nentry);
@@ -571,6 +572,7 @@ void fat_file_delete(fat_file file, fat_file parent) {
 
     // Update entrance in directory
     file->dentry->file_size = 0; // Overwrite with new size
+    file->dentry->base_name[0] = FS_NAMEDELETE;
     fill_dentry_time_now(file->dentry, false, true);
     write_dir_entry(parent, file->dentry, file->pos_in_parent);
 }
