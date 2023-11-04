@@ -492,14 +492,13 @@ void fat_file_truncate(fat_file file, off_t offset, fat_file parent) {
     write_dir_entry(parent, file->dentry, file->pos_in_parent);
 }
 
-ssize_t fat_file_pwrite(fat_file file, const void *buf, size_t size,
-                        off_t offset, fat_file parent) {
-    u32 cluster = 0;
-    ssize_t bytes_written_cluster = 0, bytes_remaining = size;
-    ssize_t bytes_to_write_cluster = 0;
-    off_t original_offset = offset, cluster_off = 0;
 
-    if (offset > file->dentry->file_size) {
+ssize_t fat_file_pwrite(fat_file file, const void *buf, size_t size, off_t offset, fat_file parent) {
+    u32 cluster = 0, new_cluster = 0;
+    ssize_t bytes_written_cluster = 0, bytes_remaining = size, bytes_to_write_cluster = 0;
+    off_t original_offset = offset, cluster_off = 0; 
+
+    if (offset > file->dentry->file_size) { // Si el desplazamiento es mayor que el tamaño del archivo, no lee ningún dato.
         errno = EOVERFLOW;
         return 0;
     }
@@ -511,12 +510,9 @@ ssize_t fat_file_pwrite(fat_file file, const void *buf, size_t size,
 
     while (bytes_remaining > 0 && !fat_table_is_EOC(file->table, cluster)) {
         DEBUG("Next cluster to write %u", cluster);
-        bytes_to_write_cluster = fat_table_get_cluster_remaining_bytes(
-            file->table, bytes_remaining, offset);
-        cluster_off = fat_table_cluster_offset(file->table, cluster) +
-                      fat_table_mask_offset(offset, file->table);
-        bytes_written_cluster = full_pwrite(
-            file->table->fd, buf, bytes_to_write_cluster, cluster_off);
+        bytes_to_write_cluster = fat_table_get_cluster_remaining_bytes(file->table, bytes_remaining, offset);
+        cluster_off = fat_table_cluster_offset(file->table, cluster) + fat_table_mask_offset(offset, file->table);
+        bytes_written_cluster = full_pwrite(file->table->fd, buf, bytes_to_write_cluster, cluster_off);
         bytes_remaining -= bytes_written_cluster;
         if (bytes_written_cluster != bytes_to_write_cluster) {
             break;
@@ -528,6 +524,17 @@ ssize_t fat_file_pwrite(fat_file file, const void *buf, size_t size,
             cluster = fat_table_get_next_cluster(file->table, cluster);
             if (errno != 0) {
                 break;
+            }
+            if (fat_table_is_EOC(file->table,cluster))
+            {
+                new_cluster = fat_table_get_next_free_cluster(file->table);
+                fat_table_set_next_cluster(file->table, new_cluster, FAT_CLUSTER_END_OF_CHAIN);
+                fat_table_set_next_cluster(file->table, cluster, new_cluster);
+                printf("El cluster es EOF: %d\n", fat_table_is_EOC(file->table, cluster));
+                printf("El siguiente cluter es: %d\n", fat_table_get_next_cluster(file->table, cluster));
+                printf("El new_cluster es EOF: %d\n", fat_table_is_EOC(file->table, new_cluster));
+                printf("El new_cluster es: %d\n", new_cluster );
+                printf("El numero de cluster es: %d\n", fat_table_get_clusters_for_size(file->table, bytes_remaining));
             }
         }
     }
@@ -544,6 +551,26 @@ ssize_t fat_file_pwrite(fat_file file, const void *buf, size_t size,
 
     return size - bytes_remaining;
 }
+
+/* 
+ *
+ * In the fat table, writes the entry of cur_cluster marking that the next cluster in chain is next_cluster.
+ * If there is an error on the write operation, sets errno to EIO.
+ *      void fat_table_set_next_cluster(fat_table table, u32 cur_cluster, u32 next_cluster);
+ * 
+ * 
+ * Calculates the number of clusters necessary to fit @size bytes.
+ *      u32 fat_table_get_clusters_for_size(fat_table table, size_t file_size);
+ * 
+ * 
+ * Returns the number of the first unused cluster in the data sector.
+ *      u32 fat_table_get_next_free_cluster(fat_table table);
+ * 
+ * 
+ * Returns true if @cluster is the end of the cluster chain 
+ *      bool fat_table_is_EOC(fat_table table, u32 cluster);
+ */
+
 
 void fat_file_delete(fat_file file, fat_file parent) {
     u32 last_cluster = 0, next_cluster = 0;
