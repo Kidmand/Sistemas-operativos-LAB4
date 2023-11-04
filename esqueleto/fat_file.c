@@ -17,7 +17,7 @@
 #include "fat_filename_util.h"
 #include "fat_table.h"
 #include "fat_util.h"
-#include "fslog.h"
+#include "big_brother.h"
 
 static void write_dir_entry(fat_file parent, fat_dir_entry child_disk_entry,
                             u32 nentry);

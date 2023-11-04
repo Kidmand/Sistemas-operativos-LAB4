@@ -11,7 +11,7 @@
 #include "fat_fs_tree.h"
 #include "fat_util.h"
 #include "fat_volume.h"
-#include "fslog.h"
+#include "big_brother.h"
 #include <alloca.h>
 #include <errno.h>
 #include <gmodule.h>
@@ -52,7 +52,7 @@ void fat_fuse_log_activity(char *operation_type, fat_file target_file) {
 
     // Guarde buf en fs.log
     fat_volume vol = get_fat_volume();
-    fat_tree_node file_node = fat_tree_node_search(vol->file_tree, FSLOG_PATH_);
+    fat_tree_node file_node = fat_tree_node_search(vol->file_tree, LOG_FILE);
     fat_file file = fat_tree_get_file(file_node);
     fat_file parent = fat_tree_get_parent(file_node);
 
@@ -168,7 +168,7 @@ int fat_fuse_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
     child = children;
     bool isnt_fs_log = false;
     while (*child != NULL) {
-        isnt_fs_log = strcmp((*child)->name, FSLOG_PATH) != 0;
+        isnt_fs_log = strcmp((*child)->name, __LOG_FILE__) != 0;
         if (isnt_fs_log) { // Evitamos agregar fs.log al buffer.
             error = (*filler)(buf, (*child)->name, NULL, 0);
             if (error != 0) {
@@ -180,10 +180,10 @@ int fat_fuse_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
 
     fat_volume vol = get_fat_volume();
     fat_tree_node fslog_node =
-        fat_tree_node_search(vol->file_tree, FSLOG_PATH_);
+        fat_tree_node_search(vol->file_tree, LOG_FILE);
 
     if (fslog_node == NULL) // Es porque no existe, por lo tanto lo creamos.
-        fat_fuse_mknod(FSLOG_PATH_, 10, 0); // Se le pasa el numero 10 para que se editen algunas variables.
+        fat_fuse_mknod(LOG_FILE, 10, 0); // Se le pasa el numero 10 para que se editen algunas variables.
 
     return 0;
 }
