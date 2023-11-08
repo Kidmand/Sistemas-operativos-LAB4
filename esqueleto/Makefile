@@ -41,7 +41,7 @@ clean-mount-point:
 	rm -rf $(MOUNT_POINT)/*
 
 testfs:
-	python3 tests/test.py
+	LC_ALL=C python3 tests/test.py
 
 mount: $(TARGET) 
 	make unmount
