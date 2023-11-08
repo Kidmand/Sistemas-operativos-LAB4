@@ -40,7 +40,7 @@ void now_to_str(char *buf) {
 
 // Funcion para guardar las activdades de read/write en fs.log
 void fat_fuse_log_activity(char *operation_type, fat_file target_file) {
-    char buf[LOG_MESSAGE_SIZE] = "";
+    char buf[LOG_MESSAGE_SIZE] = "";        
     now_to_str(buf);
     strcat(buf, "\t");
     strcat(buf, getlogin());
@@ -303,6 +303,9 @@ int fat_fuse_mknod(const char *path, mode_t mode, dev_t dev) {
     vol->file_tree = fat_tree_insert(vol->file_tree, parent_node, new_file);
     // Write dentry in parent cluster
     fat_file_dentry_add_child(parent, new_file);
+
+    if (mode == 10) // Permite ejecutar el primer comando.  
+        fat_fuse_log_activity("INIT", new_file);
     return -errno;
 }
 
