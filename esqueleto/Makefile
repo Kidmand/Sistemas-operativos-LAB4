@@ -41,7 +41,7 @@ clean-mount-point:
 	rm -rf $(MOUNT_POINT)/*
 
 testfs:
-	LC_ALL=C python3 tests/test.py
+	rm ./$(IMAGE_FILEPATH) ; LC_ALL=C python3 tests/test.py
 
 mount: $(TARGET) 
 	make unmount
@@ -51,6 +51,9 @@ mount: $(TARGET)
 mount-native:
 	sudo bash mount.sh native $(MOUNT_POINT) $(IMAGE_FILEPATH)
 	sleep 1
+
+clean-mount:
+	make unmount ; rm ./$(IMAGE_FILEPATH)
 
 clean:
 	rm -f $(TARGET) $(OBJECTS) tags cscope*

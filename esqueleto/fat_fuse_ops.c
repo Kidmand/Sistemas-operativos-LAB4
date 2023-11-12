@@ -140,6 +140,11 @@ static void fat_fuse_read_children(fat_tree_node dir_node) {
     }
 }
 
+static bool is_fs_log(fat_file file) {
+    return (fat_file_cmp_path(file, LOG_FILE) == 0);
+}
+
+
 /* Add entries of a directory in @fi to @buf using @filler function. */
 int fat_fuse_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
                      off_t offset, struct fuse_file_info *fi) {
@@ -166,10 +171,9 @@ int fat_fuse_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
 
     children = fat_tree_flatten_h_children(dir_node);
     child = children;
-    bool isnt_fs_log = false;
+
     while (*child != NULL) {
-        isnt_fs_log = strcmp((*child)->name, __LOG_FILE__) != 0;
-        if (isnt_fs_log) { // Evitamos agregar fs.log al buffer.
+        if (!is_fs_log(*child)) { // Evitamos agregar fs.log al buffer.
             error = (*filler)(buf, (*child)->name, NULL, 0);
             if (error != 0) {
                 return -errno;
@@ -293,7 +297,7 @@ int fat_fuse_mknod(const char *path, mode_t mode, dev_t dev) {
         return -errno;
     }
 
-    if (mode == 10) // ESte modo permite ocultar el archivo para otros file-system
+    if (mode == 10) // Este modo permite ocultar el archivo para otros file-system
     {
         new_file->dentry->attribs = FILE_ATTRIBUTE_SYSTEM;
         new_file->dentry->base_name[0] = FS_NAMEDELETE;

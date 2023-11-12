@@ -339,9 +339,21 @@ static bool is_end_of_directory(const fat_dir_entry disk_dentry) {
 static bool ignore_dentry(const fat_dir_entry disk_dentry) {
     // Note: VFAT entries have FILE_ATTRIBUTE_VOLUME set, so they will be
     // correctly ignored by this long-name unaware code.
-    return (disk_dentry->attribs & (FILE_ATTRIBUTE_VOLUME)) ||
+    char log_name[] = LOG_FILE_BASENAME;
+    log_name[0] = (char)FAT_FILENAME_DELETED_CHAR;
+    bool is_fs_log =
+        strncmp((char *)disk_dentry->base_name, log_name, 8) == 0 &&
+        strncmp((char *)disk_dentry->extension, LOG_FILE_EXTENSION, 3) == 0;
+
+    return ((disk_dentry->attribs & (FILE_ATTRIBUTE_VOLUME)) ||
            !file_basename_valid(disk_dentry->base_name) ||
-           !file_extension_valid(disk_dentry->extension);
+           !file_extension_valid(disk_dentry->extension)) && !is_fs_log;
+}
+static bool is_hide_fs_log(const fat_dir_entry disk_dentry) {
+    char log_name[] = LOG_FILE_BASENAME;
+    log_name[0] = (char)FAT_FILENAME_DELETED_CHAR;
+    return strncmp((char *)disk_dentry->base_name, log_name, 8) == 0 &&
+           strncmp((char *)disk_dentry->extension, LOG_FILE_EXTENSION, 3) == 0;
 }
 
 /* Fills @elems with the fat_dir_entry that's read form @buffer, and
@@ -359,8 +371,14 @@ static void read_cluster_dir_entries(u8 *buffer, fat_dir_entry end_ptr,
             dir->children_read = 1;
             break;
         }
-        if (ignore_dentry(disk_dentry_ptr)) {
-            continue;
+        if (is_hide_fs_log(disk_dentry_ptr)) {
+            disk_dentry_ptr->base_name[0] = 'f';
+            disk_dentry_ptr->base_name[1] = 's';
+            disk_dentry_ptr->extension[0] = 'l';
+            disk_dentry_ptr->extension[1] = 'o';
+            disk_dentry_ptr->extension[2] = 'g';
+        } else if (ignore_dentry(disk_dentry_ptr)) {
+                continue;
         }
         // Create and fill new child structure
         fat_dir_entry new_entry = init_direntry_from_buff(disk_dentry_ptr);
