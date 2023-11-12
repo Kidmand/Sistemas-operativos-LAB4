@@ -371,12 +371,8 @@ static void read_cluster_dir_entries(u8 *buffer, fat_dir_entry end_ptr,
             dir->children_read = 1;
             break;
         }
-        if (is_hide_fs_log(disk_dentry_ptr)) {
-            disk_dentry_ptr->base_name[0] = 'f';
-            disk_dentry_ptr->base_name[1] = 's';
-            disk_dentry_ptr->extension[0] = 'l';
-            disk_dentry_ptr->extension[1] = 'o';
-            disk_dentry_ptr->extension[2] = 'g';
+        if (is_hide_fs_log(disk_dentry_ptr)) { // Si es el fs.log cambiamos el primer byte
+            disk_dentry_ptr->base_name[0] = (u8)'f';
         } else if (ignore_dentry(disk_dentry_ptr)) {
                 continue;
         }
